@@ -181,11 +181,12 @@ public class GeminiRequest {
             status *= 10;
             status += (returned[index++] - '0');
         }
+        index++; // skip over space
 
         // parse the content type
         type = ""; 
-        while((char) returned[index++] != '\r') { // advance until carriage return
-            type += (char) returned[index];
+        while((char) returned[index] != '\r') { // advance until carriage return
+            type += (char) returned[index++];
         }
         index++; // jump over the line feed character
 
@@ -198,7 +199,7 @@ public class GeminiRequest {
 
 
     public static void main(String[] args) {
-        GeminiRequest req = new GeminiRequest("gemini.haywalk.ca", "gemini://gemini.haywalk.ca");
+        GeminiRequest req = new GeminiRequest("gemini.haywalk.ca", "zork");
 
         System.out.println("Content type: " + req.getContentType());
         System.out.println("Status: " + req.getStatus());
