@@ -13,6 +13,7 @@ import javax.net.ssl.SSLSocketFactory;
 import javax.net.ssl.TrustManager;
 import javax.net.ssl.X509TrustManager;
 import java.security.cert.X509Certificate;
+import java.security.SecureRandom;
 
 /**
  * A Gemini request.
@@ -40,6 +41,16 @@ public class GeminiRequest {
      * Content returned by the server.
      */
     private Byte[] content;
+
+    /**
+     * Content type returned by the server.
+     */
+    private String type;
+
+    /**
+     * Status returned by the server.
+     */
+    private int status;
 
     /**
      * Create a new Gemini request.
@@ -90,18 +101,13 @@ public class GeminiRequest {
             // read the response
             byte[] returned = in.readAllBytes();
 
-            // jump through hoops to cast to Byte[] array
-            content = new Byte[returned.length];
-            for(int i = 0; i < returned.length; i++) {
-                content[i] = returned[i];
-            }
+            parseContent(returned);
         } 
         // failed to send request or receive response
         catch(IOException e) {
             throw new RequestFailedException("Failed to communicate with the server.");
         }
     }
-
 
     /**
      * Return the content returned by the server.
@@ -118,14 +124,16 @@ public class GeminiRequest {
      * @return The status returned by the server.
      */
     public int getStatus() {
-        int status = 0;
-       
-        for(int i = 0; i < STATUS_DIGITS; i++) {
-            status *= 10;
-            status += (content[i] - '0');
-        }
-
         return status;
+    }
+
+    /**
+     * Return the type of content returned by the server.
+     * 
+     * @return The type of content returned by the server.
+     */
+    public String getContentType() {
+        return type;
     }
 
     /**
@@ -155,7 +163,49 @@ public class GeminiRequest {
         }; 
         
         // initialize and return the SSL context
-        context.init(null, trustAllCerts, new java.security.SecureRandom()); 
+        context.init(null, trustAllCerts, new SecureRandom()); 
         return context;
+    }
+
+    /**
+     * Given the raw data returned by the server, parse the header and content.
+     * 
+     * @param returned Bytes returned by the server.
+     */
+    private void parseContent(byte[] returned) {
+        int index = 0;
+
+        // parse the status
+        status = 0;
+        for(int i = 0; i < STATUS_DIGITS; i++) {
+            status *= 10;
+            status += (returned[index++] - '0');
+        }
+
+        // parse the content type
+        type = ""; 
+        while((char) returned[index++] != '\r') { // advance until carriage return
+            type += (char) returned[index];
+        }
+        index++; // jump over the line feed character
+
+        // load the content
+        content = new Byte[returned.length - index];
+        for(int i = 0; i < content.length; i++) {
+            content[i] = returned[index++];
+        }
+    }
+
+
+    public static void main(String[] args) {
+        GeminiRequest req = new GeminiRequest("gemini.haywalk.ca", "gemini://gemini.haywalk.ca");
+
+        System.out.println("Content type: " + req.getContentType());
+        System.out.println("Status: " + req.getStatus());
+
+        System.out.println("Content:");
+        for(Byte b : req.getContent()) {
+            System.out.print((char) b.intValue());
+        }
     }
 }
