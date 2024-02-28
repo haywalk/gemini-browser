@@ -214,16 +214,4 @@ public class GeminiRequest {
             content[i] = returned[index++];
         }
     }
-
-    public static void main(String[] args) {
-        GeminiRequest req = new GeminiRequest("gemini.haywalk.ca", "gemini://gemini.haywalk.ca/");
-
-        System.out.println("Content type: " + req.getHeaderInfo());
-        System.out.println("Status: " + req.getStatus());
-
-        System.out.println("Content:");
-        for(Byte b : req.getContent()) {
-            System.out.print((char) b.intValue());
-        }
-    }
 }
