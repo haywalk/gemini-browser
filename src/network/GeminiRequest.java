@@ -57,7 +57,7 @@ public class GeminiRequest {
      * 
      * @param host Server to send request to.
      * @param url Resource to request.
-     * @throws RequestFailedException
+     * @throws RequestFailedException If the server rejects the request or any other issue is encountered.
      */
     public GeminiRequest(String host, String url) throws RequestFailedException {
 
