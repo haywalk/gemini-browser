@@ -98,7 +98,7 @@ public class GeminiRequest {
             // send the request
             out.write((url + EOL).getBytes());
 
-            // read the response
+            // read the responseRequestFailedException
             byte[] returned = in.readAllBytes();
 
             parseContent(returned);
@@ -107,6 +107,15 @@ public class GeminiRequest {
         catch(IOException e) {
             throw new RequestFailedException("Failed to communicate with the server.");
         }
+    }
+
+    /**
+     * Create a new Gemini request.
+     * 
+     * @param url URL (gemini://hostname/resource) to request.
+     */
+    public GeminiRequest(URL url) {
+        this(url.getHostname(), url.getURL());
     }
 
     /**
@@ -132,7 +141,7 @@ public class GeminiRequest {
      * 
      * @return The type of content returned by the server.
      */
-    public String getContentType() {
+    public String getHeaderInfo() {
         return type;
     }
 
@@ -173,21 +182,30 @@ public class GeminiRequest {
      * @param returned Bytes returned by the server.
      */
     private void parseContent(byte[] returned) {
-        int index = 0;
+        // initialize instance variables to default values
+        status = 0;
+        type = "";
+        content = null;
+
+        int index = 0; // start parsing at first byte
 
         // parse the status
-        status = 0;
         for(int i = 0; i < STATUS_DIGITS; i++) {
             status *= 10;
             status += (returned[index++] - '0');
         }
-        index++; // skip over space
+
+        // if there is additional header information, skip over the space
+        // between the status and that information
+        if(returned[index] != '\r') {
+            index++;
+        }
 
         // parse the content type
-        type = ""; 
         while((char) returned[index] != '\r') { // advance until carriage return
             type += (char) returned[index++];
         }
+        index++; // jump over the carriage return character
         index++; // jump over the line feed character
 
         // load the content
@@ -197,11 +215,10 @@ public class GeminiRequest {
         }
     }
 
-
     public static void main(String[] args) {
-        GeminiRequest req = new GeminiRequest("gemini.haywalk.ca", "zork");
+        GeminiRequest req = new GeminiRequest("gemini.haywalk.ca", "gemini://gemini.haywalk.ca/");
 
-        System.out.println("Content type: " + req.getContentType());
+        System.out.println("Content type: " + req.getHeaderInfo());
         System.out.println("Status: " + req.getStatus());
 
         System.out.println("Content:");
