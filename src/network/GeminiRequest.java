@@ -101,7 +101,9 @@ public class GeminiRequest {
             // read the responseRequestFailedException
             byte[] returned = in.readAllBytes();
 
+            // parse content returned and close the socket
             parseContent(returned);
+            socket.close();
         } 
         // failed to send request or receive response
         catch(IOException e) {

@@ -10,7 +10,7 @@ public class URL {
     /**
      * Regular expression to match Gemini URLs.
      */
-    private static final String URL_FORMAT = "^gemini:\\/\\/[a-zA-Z0-9.]+[\\/[a-zA-Z0-9.]*]*$";
+    private static final String URL_FORMAT = "^gemini:\\/\\/[a-zA-Z0-9.]+[\\/[a-zA-Z0-9.]*]*\\??.*$";
 
     /**
      * URL prefix.
