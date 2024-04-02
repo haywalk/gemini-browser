@@ -22,12 +22,18 @@ public class TestURL {
         // test with one URL
         URL url1 = new URL("gemini://gemini.haywalk.ca");
         assertTrue(url1.getHostname().equals("gemini.haywalk.ca"));
-        assertTrue(url1.getURL().equals("gemini://gemini.haywalk.ca"));
+        assertTrue(url1.getFolderURL().equals("gemini://gemini.haywalk.ca/"));
+        assertTrue(url1.getFile().equals(""));
+        assertTrue(url1.getURL().equals("gemini://gemini.haywalk.ca/"));
 
         // test with another URL
         URL url2 = new URL("gemini://gemini.circumlunar.space/capcom/");
         assertTrue(url2.getHostname().equals("gemini.circumlunar.space"));
+        assertTrue(url2.getFolderURL().equals("gemini://gemini.circumlunar.space/capcom/"));
+        assertTrue(url2.getFile().equals(""));
         assertTrue(url2.getURL().equals("gemini://gemini.circumlunar.space/capcom/"));
+
+        
     }
 
     /**

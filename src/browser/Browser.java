@@ -1,16 +1,27 @@
 package browser;
 
+import java.util.ArrayDeque;
+import java.util.List;
+
+import gemtext.GeminiLink;
+import gemtext.Gemtext;
+import gemtext.GemtextParser;
 import javafx.application.Application;
 import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
+import javafx.scene.control.Hyperlink;
 import javafx.scene.control.Label;
+import javafx.scene.control.ScrollPane;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.ColumnConstraints;
 import javafx.scene.layout.GridPane;
+import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
+import javafx.scene.text.Font;
+import javafx.scene.text.Text;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 import javafx.stage.WindowEvent;
@@ -42,6 +53,11 @@ public class Browser extends Application {
     private static final String STARTUP_STATUS = "Hayden's Gemini Browser";
 
     /**
+     * Startup page
+     */
+    private static final String STARTUP_ADDRESS = "gemini://gemini.haywalk.ca/browser.gmi";
+
+    /**
      * Address bar.
      */
     private TextField addressBar;
@@ -51,9 +67,22 @@ public class Browser extends Application {
      */
     private Label statusBar;
 
+    /**
+     * Content pane.
+     */
+    private ScrollPane contentPane;
+
+    /**
+     * Main window.
+     */
     private Stage primaryStage;
 
+    /**
+     * Store user's response to prompts
+     */
     private String response;
+
+    private ArrayDeque<String> history;
 
     /**
      * Start the application.
@@ -61,15 +90,16 @@ public class Browser extends Application {
     @Override
     public void start(Stage primaryStage) {
         
+
         this.primaryStage = primaryStage;
 
         // create address bar
         addressBar = new TextField();
 
+        // create submit button
         Button submitButton = new Button();
         submitButton.setText("Submit");
         submitButton.setMaxWidth(Double.MAX_VALUE);
-
         submitButton.setOnAction(new EventHandler<ActionEvent>() {
             @Override
             public void handle(ActionEvent arg0) {
@@ -90,14 +120,46 @@ public class Browser extends Application {
         // add address bar and submit button to top bar
         topBar.add(addressBar, 0, 0);
         topBar.add(submitButton, 1, 0);
-        
+
+        // create back button
+        Button backButton = new Button();
+        backButton.setText("Back");
+        backButton.setMaxWidth(Double.MAX_VALUE);
+        backButton.setOnAction(new EventHandler<ActionEvent>() {
+            @Override
+            public void handle(ActionEvent arg0) {
+                back();
+            }
+        });
+
+        Button parentFolderButton = new Button();
+        parentFolderButton.setText("Parent Folder");
+        parentFolderButton.setMaxWidth(Double.MAX_VALUE);
+        parentFolderButton.setOnAction(new EventHandler<ActionEvent>() {
+            @Override
+            public void handle(ActionEvent arg0) {
+                makeRequest(new URL(addressBar.getText()).getFolderURL());
+            }
+        });
+
+        // button vbox
+        HBox buttonBar = new HBox();
+        buttonBar.getChildren().addAll(backButton, parentFolderButton);
+
+        VBox menu = new VBox();
+        menu.getChildren().addAll(topBar, buttonBar);
+
         // create status bar
         statusBar = new Label(STARTUP_STATUS);
 
+        // create content pane
+        contentPane = new ScrollPane();
+
         // top bar to a vbox
         BorderPane root = new BorderPane();
-        root.setTop(topBar);
+        root.setTop(menu);
         root.setBottom(statusBar);
+        root.setCenter(contentPane);
 
         // add the vbox to a scene
         Scene scene = new Scene(root, DEFAULT_WIDTH, DEFAULT_HEIGHT);
@@ -106,6 +168,10 @@ public class Browser extends Application {
         primaryStage.setTitle("Gemini Browser");
         primaryStage.setScene(scene);
         primaryStage.show();
+
+        history = new ArrayDeque<String>();
+        makeRequest(STARTUP_ADDRESS);
+
     }
 
     /**
@@ -123,7 +189,9 @@ public class Browser extends Application {
             statusBar.setText(req.getStatus() + " " + req.getHeaderInfo());
 
             // process the completed request
-            processRequest(req);            
+            processRequest(req);
+            history.push(url); 
+            contentPane.setVvalue(contentPane.getVmin()); // resets scroll bar
         } 
         
         // handle bad URL
@@ -153,6 +221,7 @@ public class Browser extends Application {
             
             // success
             case 20:
+                processContent(req);
                 break;
             
             // redirect
@@ -176,6 +245,104 @@ public class Browser extends Application {
             default:
                 break;
         }
+    }
+
+    /**
+     * Process content returned by the server.
+     */
+    private void processContent(GeminiRequest req) {
+        
+        String header = req.getHeaderInfo();
+
+        // parse gemtext
+        if(header.contains("text/gemini")) {
+            displayGemtext(req.getContent());
+        }
+
+        // show plaintext
+        else if(header.contains("text/plain")) {
+            displayPlaintext(req.getContent());
+        }
+        // TODO make the last resort downloading binary file :)
+        else {
+            Downloader.download(req);
+        }
+    }
+
+    /**
+     * Parse and display Gemtext.
+     * 
+     * @param content Gemtext content as Bytes.
+     */
+    private void displayGemtext(Byte[] content) {
+        // parse gemtext
+        GemtextParser parser = new GemtextParser(content);
+        List<Gemtext> gemtext = parser.getParsedContent();
+
+        VBox contentBox = new VBox();
+
+        for(Gemtext element : gemtext) {
+            // set up links
+            if(element instanceof GeminiLink) {
+                GeminiLink link = (GeminiLink) element;
+                Hyperlink hyperlink = (Hyperlink) link.render();
+                
+                hyperlink.setOnAction(new EventHandler<ActionEvent>() {
+                    @Override
+                    public void handle(ActionEvent arg0) {
+                        // valid (complete) url
+                        if(URL.isValidURL(link.getURL())) {
+                            makeRequest(link.getURL());
+                            return;
+                        }
+
+                        // otherwise try local url
+                        String localURL = new URL(addressBar.getText()).getFolderURL();
+                        if(!localURL.endsWith("/")) {
+                            localURL += "/";
+                        }
+
+                        // remove / or ./
+                        if(link.getURL().startsWith("/")) {
+                            localURL += link.getURL().substring(1);
+                        } else if(link.getURL().startsWith("./")) {
+                            localURL += link.getURL().substring(2);
+                        }
+
+                        // last try to check validity
+                        if(URL.isValidURL(localURL)) {
+                            makeRequest(localURL);
+                            return;
+                        }
+
+                        System.out.println(localURL);
+                        statusBar.setText("Not a Gemini link.");
+                        return;
+                    }            
+                });            
+            }
+
+            contentBox.getChildren().add(element.render());
+        }
+
+        contentPane.setContent(contentBox);
+    }
+
+    /**
+     * Display plaintext content.
+     * 
+     * @param content Content to display.
+     */
+    private void displayPlaintext(Byte[] content) {
+        StringBuilder sb = new StringBuilder();
+
+        for(Byte b : content) {
+            sb.append((char) b.intValue());
+        }
+
+        Text text = new Text(sb.toString());
+        text.setFont(Font.font("monospace"));
+        contentPane.setContent(text);
     }
 
     /**
@@ -221,6 +388,17 @@ public class Browser extends Application {
         Scene popupScene = new Scene(promptWindow);
         popup.setScene(popupScene);
         popup.showAndWait();
+    }
+
+    private void back() {
+        // do nothing if history is empty
+        if(history.size() < 2) {
+            return;
+        }
+
+        history.pop();
+        String lastURL = history.pop();
+        makeRequest(lastURL);
     }
 
     /**

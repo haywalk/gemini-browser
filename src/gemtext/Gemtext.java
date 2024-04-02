@@ -1,6 +1,6 @@
 package gemtext;
 
-import javafx.scene.text.Text;
+import javafx.scene.Node;
 
 /**
  * A displayable Gemtext element.
@@ -10,9 +10,9 @@ import javafx.scene.text.Text;
  */
 public interface Gemtext {
     /**
-     * Return the Gemtext element rendered as text.
+     * Return the Gemtext element rendered as a JavaFX Node.
      * 
-     * @return Rendered element as a Text object.
+     * @return Rendered element as a JavaFX Node.
      */
-    public Text render();
+    public Node render();
 }

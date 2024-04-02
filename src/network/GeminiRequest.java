@@ -48,6 +48,11 @@ public class GeminiRequest {
     private String type;
 
     /**
+     * URL
+     */
+    private String url;
+
+    /**
      * Status returned by the server.
      */
     private int status;
@@ -109,6 +114,8 @@ public class GeminiRequest {
         catch(IOException e) {
             throw new RequestFailedException("Failed to communicate with the server.");
         }
+
+        this.url = url;
     }
 
     /**
@@ -215,5 +222,14 @@ public class GeminiRequest {
         for(int i = 0; i < content.length; i++) {
             content[i] = returned[index++];
         }
+    }
+    
+    /**
+     * Get the URL for this request.
+     * 
+     * @return URL.
+     */
+    public String url() {
+        return this.url;
     }
 }
