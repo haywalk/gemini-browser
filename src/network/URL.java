@@ -131,12 +131,4 @@ public class URL {
         return url.matches(URL_FORMAT);
     }
 
-    public static void main(String[] args) {
-        URL url = new URL("gemini://gemini.circumlunar.space/capcom/");
-
-        System.out.println(url.getURL());
-        System.out.println(url.getHostname());
-        System.out.println(url.getFolderURL());
-        System.out.println(url.getFile());
-    }
 }

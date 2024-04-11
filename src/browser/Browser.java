@@ -132,6 +132,7 @@ public class Browser extends Application {
             }
         });
 
+        // create parent folder button
         Button parentFolderButton = new Button();
         parentFolderButton.setText("Parent Folder");
         parentFolderButton.setMaxWidth(Double.MAX_VALUE);
@@ -142,9 +143,20 @@ public class Browser extends Application {
             }
         });
 
+        // create start page button
+        Button homeButton = new Button();
+        homeButton.setText("Home");
+        homeButton.setMaxWidth(Double.MAX_VALUE);
+        homeButton.setOnAction(new EventHandler<ActionEvent>() {
+            @Override
+            public void handle(ActionEvent arg0) {
+                makeRequest(STARTUP_ADDRESS);
+            }
+        });
+
         // button vbox
         HBox buttonBar = new HBox();
-        buttonBar.getChildren().addAll(backButton, parentFolderButton);
+        buttonBar.getChildren().addAll(backButton, parentFolderButton, homeButton);
 
         VBox menu = new VBox();
         menu.getChildren().addAll(topBar, buttonBar);
@@ -169,7 +181,7 @@ public class Browser extends Application {
         primaryStage.setScene(scene);
         primaryStage.show();
 
-        history = new ArrayDeque<String>();
+        history = new ArrayDeque<>();
         makeRequest(STARTUP_ADDRESS);
 
     }
@@ -180,13 +192,14 @@ public class Browser extends Application {
      * @param url
      */
     private void makeRequest(String url) {
+
         try {
             // attempt to make request
             GeminiRequest req = new GeminiRequest(new URL(url));
 
             // set address bar to url requested and status bar to status returned
-            addressBar.setText(url);
-            statusBar.setText(req.getStatus() + " " + req.getHeaderInfo());
+            updateURL(url);
+            showStatus(req.getStatus() + " " + req.getHeaderInfo());
 
             // process the completed request
             processRequest(req);
@@ -196,12 +209,12 @@ public class Browser extends Application {
         
         // handle bad URL
         catch(BadURLException e) {
-            statusBar.setText("Bad Gemini URL.");
+            showStatus("Bad Gemini URL.");
         } 
         
         // handle request failure
         catch(RequestFailedException e) {
-            statusBar.setText("Request failed.");
+            showStatus("Request failed.");
         }
     }
 
@@ -263,9 +276,12 @@ public class Browser extends Application {
         else if(header.contains("text/plain")) {
             displayPlaintext(req.getContent());
         }
-        // TODO make the last resort downloading binary file :)
+
+        // last resort: download binary file
         else {
+            showStatus("Downloading " + req.url() + " (" + req.getContent().length + " bytes)");
             Downloader.download(req);
+            showStatus("Downloaded " + req.url() + " (" + req.getContent().length + " bytes)");            
         }
     }
 
@@ -296,17 +312,27 @@ public class Browser extends Application {
                             return;
                         }
 
-                        // otherwise try local url
+                        // full path on same server 
+                        if(link.getURL().startsWith("/")) {
+                            URL current = new URL(addressBar.getText());
+                            String rootURL = current.getHostname() + link.getURL();
+                            if(URL.isValidURL(rootURL)) {
+                                makeRequest(rootURL);
+                                return;
+                            }
+                        } 
+
+                        // try local url
                         String localURL = new URL(addressBar.getText()).getFolderURL();
                         if(!localURL.endsWith("/")) {
                             localURL += "/";
                         }
-
-                        // remove / or ./
-                        if(link.getURL().startsWith("/")) {
-                            localURL += link.getURL().substring(1);
-                        } else if(link.getURL().startsWith("./")) {
+                        
+                        // remove ./ 
+                        else if(link.getURL().startsWith("./")) {
                             localURL += link.getURL().substring(2);
+                        } else {
+                            localURL += link.getURL();
                         }
 
                         // last try to check validity
@@ -315,9 +341,7 @@ public class Browser extends Application {
                             return;
                         }
 
-                        System.out.println(localURL);
                         statusBar.setText("Not a Gemini link.");
-                        return;
                     }            
                 });            
             }
@@ -343,6 +367,24 @@ public class Browser extends Application {
         Text text = new Text(sb.toString());
         text.setFont(Font.font("monospace"));
         contentPane.setContent(text);
+    }
+
+    /**
+     * Display a status message.
+     * 
+     * @param status Status.
+     */
+    private void showStatus(String status) {
+        statusBar.setText(status);
+    }
+
+    /**
+     * Update URL bar.
+     * 
+     * @param URL URL.
+     */
+    private void updateURL(String url) {
+        addressBar.setText(url);
     }
 
     /**
