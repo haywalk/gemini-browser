@@ -313,9 +313,10 @@ public class Browser extends Application {
                         }
 
                         // full path on same server 
-                        if(link.getURL().startsWith("/")) {
+                        if(link.getURL().startsWith("/")) {                           
                             URL current = new URL(addressBar.getText());
-                            String rootURL = current.getHostname() + link.getURL();
+                            String rootURL = "gemini://" + current.getHostname() + link.getURL();
+                            
                             if(URL.isValidURL(rootURL)) {
                                 makeRequest(rootURL);
                                 return;
@@ -329,7 +330,7 @@ public class Browser extends Application {
                         }
                         
                         // remove ./ 
-                        else if(link.getURL().startsWith("./")) {
+                        if(link.getURL().startsWith("./")) {
                             localURL += link.getURL().substring(2);
                         } else {
                             localURL += link.getURL();
