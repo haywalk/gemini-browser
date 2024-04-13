@@ -48,6 +48,11 @@ public class GeminiRequest {
     private String type;
 
     /**
+     * URL
+     */
+    private String url;
+
+    /**
      * Status returned by the server.
      */
     private int status;
@@ -101,12 +106,16 @@ public class GeminiRequest {
             // read the responseRequestFailedException
             byte[] returned = in.readAllBytes();
 
+            // parse content returned and close the socket
             parseContent(returned);
+            socket.close();
         } 
         // failed to send request or receive response
         catch(IOException e) {
             throw new RequestFailedException("Failed to communicate with the server.");
         }
+
+        this.url = url;
     }
 
     /**
@@ -148,6 +157,8 @@ public class GeminiRequest {
     /**
      * Create an SSL context. For simplicity, this will accept any server certificate.
      * 
+     * Adapted from: https://stackoverflow.com/questions/1219208/is-it-possible-to-get-java-to-ignore-the-trust-store-and-just-accept-whatever
+     * 
      * @return SSLContext object.
      * @throws KeyManagementException If initialization of SSLContext fails.
      * @throws NoSuchAlgorithmException If SSLContext doesn't support TLS.
@@ -164,9 +175,11 @@ public class GeminiRequest {
                 } 
                 public void checkClientTrusted( 
                     java.security.cert.X509Certificate[] certs, String authType) {
+                        // this method is empty on purpose
                 } 
                 public void checkServerTrusted( 
                     java.security.cert.X509Certificate[] certs, String authType) {
+                        // this method is empty on purpose
                 }
             } 
         }; 
@@ -202,9 +215,12 @@ public class GeminiRequest {
         }
 
         // parse the content type
+        StringBuilder contentType = new StringBuilder();
         while((char) returned[index] != '\r') { // advance until carriage return
-            type += (char) returned[index++];
+            contentType.append((char) returned[index++]);
         }
+        type = contentType.toString();
+        
         index++; // jump over the carriage return character
         index++; // jump over the line feed character
 
@@ -213,5 +229,14 @@ public class GeminiRequest {
         for(int i = 0; i < content.length; i++) {
             content[i] = returned[index++];
         }
+    }
+    
+    /**
+     * Get the URL for this request.
+     * 
+     * @return URL.
+     */
+    public String url() {
+        return this.url;
     }
 }

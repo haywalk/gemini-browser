@@ -10,7 +10,7 @@ public class URL {
     /**
      * Regular expression to match Gemini URLs.
      */
-    private static final String URL_FORMAT = "^gemini:\\/\\/[a-zA-Z0-9.]+[\\/[a-zA-Z0-9.]*]*$";
+    private static final String URL_FORMAT = "^gemini://[a-zA-Z0-9.]+[/[a-zA-Z0-9.]*]*\\??.*$";
 
     /**
      * URL prefix.
@@ -23,9 +23,14 @@ public class URL {
     private String hostname;
 
     /**
-     * Store the URL.
+     * Folder on server, e.g. /img/
      */
-    private String url;
+    private String folder;
+
+    /**
+     * File on server, e.g. image.jpg
+     */
+    private String file;
 
     /**
      * Create a new URL object.
@@ -44,18 +49,45 @@ public class URL {
         url = url.toLowerCase();
 
         // check validity
-        if(!url.matches(URL_FORMAT)) {
+        if(!URL.isValidURL(url)) {
             throw new BadURLException("Invalid URL format.");
         }
 
-        // save url
-        this.url = url;
+        // parse url
+        parse(url);
+    }
 
+
+    /**
+     * Parse the hostname, folder, and file from a URL.
+     * 
+     * @param url URL to parse.
+     * @return Hostname.
+     */
+    private void parse(String url) {
         // parse hostname from URL
         hostname = "";
-        int index = PREFIX.length();
-        while(index < url.length() && url.charAt(index) != '/') {
+        int index = PREFIX.length(); // skip over gemini://
+        while(index < url.length() && url.charAt(index) != '/') {           
             hostname += url.charAt(index++);
+        }
+
+        // parse file
+        file = "";
+        int fileIndex;
+        for(fileIndex = url.length() - 1; 
+            url.charAt(fileIndex) != '/' && fileIndex > PREFIX.length() + hostname.length() - 1; 
+            fileIndex--) {}
+
+        if(++fileIndex < url.length()) {
+            file = url.substring(fileIndex);
+        }
+
+        // parse folder
+        if(index < fileIndex) {
+            folder = url.substring(index, fileIndex);
+        } else {
+            folder = "/";
         }
     }
 
@@ -74,6 +106,29 @@ public class URL {
      * @return The URL.
      */
     public String getURL() {
-        return url;
+        return PREFIX + hostname + folder + file;
     }
+
+    public String getFile() {
+        return file;
+    }
+
+    /**
+     * Return the URL of the folder this file is in.
+     * @return Folder URL
+     */
+    public String getFolderURL() {
+        return PREFIX + hostname + folder;
+    }
+
+    /**
+     * Check the validity of a URL.
+     * 
+     * @param url URL to check.
+     * @return {@code true} if valid.
+     */
+    public static boolean isValidURL(String url) {
+        return url.matches(URL_FORMAT);
+    }
+
 }

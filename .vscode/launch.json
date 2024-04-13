@@ -6,6 +6,13 @@
     "configurations": [
         {
             "type": "java",
+            "name": "URL",
+            "request": "launch",
+            "mainClass": "network.URL",
+            "projectName": "Networks Project_66b47af8"
+        },
+        {
+            "type": "java",
             "name": "GeminiRequest",
             "request": "launch",
             "mainClass": "network.GeminiRequest",
